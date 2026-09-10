@@ -45,34 +45,20 @@ export default function CompaniesManagement({ onCompanyUpdated, onSelectCompanyE
   }, []);
 
   const handleDelete = async (id, name, empCount) => {
-    let confirmMsg = `Are you sure you want to delete company "${name}"? This action cannot be undone.`;
+    let confirmMsg = `Are you sure you want to permanently delete company "${name}"? This action cannot be undone.`;
     if (empCount > 0) {
-      confirmMsg = `Company "${name}" currently has ${empCount} employee(s) associated with it. Deleting will unassign those employees. Do you wish to proceed?`;
+      confirmMsg = `Company "${name}" has ${empCount} employee(s) assigned. Deleting will clean up its company payslips and unassign its employees. Do you wish to proceed?`;
     }
     if (!window.confirm(confirmMsg)) {
       return;
     }
 
     try {
-      await api.deleteCompany(id, empCount > 0);
+      await api.deleteCompany(id, true);
       setFeedback({ type: 'success', text: `Company "${name}" deleted successfully.` });
       await fetchCompanies();
       if (onCompanyUpdated) await onCompanyUpdated();
     } catch (err) {
-      if (err.canForce) {
-        if (window.confirm(`${err.message}\nDo you want to force delete this company and unassign its employees?`)) {
-          try {
-            await api.deleteCompany(id, true);
-            setFeedback({ type: 'success', text: `Company "${name}" deleted successfully.` });
-            await fetchCompanies();
-            if (onCompanyUpdated) await onCompanyUpdated();
-            return;
-          } catch (forceErr) {
-            setFeedback({ type: 'error', text: forceErr.message });
-            return;
-          }
-        }
-      }
       setFeedback({ type: 'error', text: err.message || 'Failed to delete company' });
     }
   };

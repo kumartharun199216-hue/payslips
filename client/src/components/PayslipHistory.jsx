@@ -58,6 +58,16 @@ export default function PayslipHistory({ employees, onSelectPayslipToView, onDow
     }
   };
 
+  const handleDelete = async (id, number) => {
+    if (!confirm(`Are you sure you want to permanently delete payslip #${number}? This action cannot be undone.`)) return;
+    try {
+      await api.deletePayslip(id);
+      fetchPayslips();
+    } catch (err) {
+      alert(err.message || 'Failed to delete payslip.');
+    }
+  };
+
   const handleVoid = async (id, number) => {
     if (!confirm(`Are you sure you want to mark payslip #${number} as void?`)) return;
     try {
@@ -250,15 +260,13 @@ export default function PayslipHistory({ employees, onSelectPayslipToView, onDow
                           <Printer className="w-4 h-4" />
                         </button>
 
-                        {p.status === 'Active' && (
-                          <button
-                            onClick={() => handleVoid(p.id, p.payslip_number)}
-                            title="Void Payslip"
-                            className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDelete(p.id, p.payslip_number)}
+                          title="Permanently Delete Payslip"
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 hover:text-rose-800 rounded transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>

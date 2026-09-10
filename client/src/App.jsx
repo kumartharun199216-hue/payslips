@@ -116,7 +116,7 @@ export default function App() {
     setDownloading(true);
     try {
       let payslipObj = payslip;
-      if (!payslip.employee && payslip.id) {
+      if ((!payslip.employee || !payslip.earnings) && payslip.id) {
         payslipObj = await api.getPayslip(payslip.id);
       }
       setViewingPayslip(payslipObj);
@@ -131,15 +131,19 @@ export default function App() {
         let attempts = 0;
         const interval = setInterval(() => {
           const el = document.getElementById('printable-payslip');
-          if (el || attempts > 25) {
+          if (el) {
             clearInterval(interval);
             resolve(el);
+          } else if (attempts > 60) {
+            clearInterval(interval);
+            resolve(null);
           }
           attempts++;
         }, 50);
       });
 
       if (elem) {
+        await new Promise(r => setTimeout(r, 150));
         await generatePayslipPdf(elem, filename);
       } else {
         alert('Could not render payslip element for PDF download.');

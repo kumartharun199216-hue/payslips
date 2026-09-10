@@ -301,6 +301,7 @@ export default function TemplateBuilderModal({
                   <label className="block text-xs font-bold text-slate-700 mb-2">Base Structural Layout</label>
                   <div className="grid grid-cols-2 gap-2">
                     {[
+                      { id: 'adecco', label: 'Adecco Enterprise', desc: 'Tabular layout with leave box & YTD columns' },
                       { id: 'modern', label: 'Modern Corporate', desc: 'Soft cards & pill badges' },
                       { id: 'executive', label: 'Executive Sleek', desc: 'Bold banner & executive frame' },
                       { id: 'classic', label: 'Classic Formal', desc: 'Traditional accounting ledger' },

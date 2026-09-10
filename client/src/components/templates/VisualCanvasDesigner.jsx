@@ -214,7 +214,14 @@ export default function VisualCanvasDesigner({
     theme_color: themeColor,
     accent_color: accentColor,
     watermark_text: watermark,
-    layout_config_json: blocks
+    layout_type: template?.layout_type || 'modern',
+    layout_config_json: blocks,
+    show_company_logo: template?.show_company_logo ?? 1,
+    show_bank_details: template?.show_bank_details ?? 1,
+    show_statutory_ids: template?.show_statutory_ids ?? 1,
+    show_attendance: template?.show_attendance ?? 1,
+    show_signature_block: template?.show_signature_block ?? 1,
+    footer_notes: template?.footer_notes || 'This is a computer-generated document. No signature is required.'
   };
 
   return (

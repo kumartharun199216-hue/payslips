@@ -230,8 +230,18 @@ export const api = {
     return res.json();
   },
 
-  voidPayslip: async (id) => {
+  deletePayslip: async (id) => {
     const res = await fetch(`${API_BASE}/payslips/${id}`, {
+      method: 'DELETE',
+      headers: { ...getAuthHeaders() }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to delete payslip');
+    return data;
+  },
+
+  voidPayslip: async (id) => {
+    const res = await fetch(`${API_BASE}/payslips/${id}?void=true`, {
       method: 'DELETE',
       headers: { ...getAuthHeaders() }
     });

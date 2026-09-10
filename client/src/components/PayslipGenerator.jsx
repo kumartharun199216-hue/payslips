@@ -130,32 +130,12 @@ export default function PayslipGenerator({
       };
     });
 
-    // Prorate deductions and statutory rules
+    // Deductions remain constant even when LOP changes (LOP is deducted from earnings, not deductions)
     const updatedDeductions = bDeds.map((d) => {
       const baseAmt = Number(d.amount) || 0;
-      // Statutory EPF: 12% of Basic, capped at 1,800
-      if (/pf|provident/i.test(d.name)) {
-        const basic = updatedEarnings.find(e => /basic/i.test(e.name));
-        const basicAmt = basic ? Number(basic.amount) || 0 : 0;
-        const calcPf = Math.min(1800, Math.round(basicAmt * 0.12));
-        return {
-          ...d,
-          amount: p === w ? baseAmt : calcPf
-        };
-      }
-      // Professional Tax: standard slabs
-      if (/professional tax|pt/i.test(d.name)) {
-        const gross = updatedEarnings.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-        const pt = gross >= 15000 ? 200 : (gross >= 10000 ? 150 : 0);
-        return {
-          ...d,
-          amount: p === w ? baseAmt : pt
-        };
-      }
-      const proratedAmt = p === w ? baseAmt : Math.round(baseAmt * ratio);
       return {
         ...d,
-        amount: proratedAmt
+        amount: baseAmt
       };
     });
 
@@ -284,8 +264,7 @@ export default function PayslipGenerator({
     if (baseSalaryRef.current.deductions[idx]) {
       if (field === 'amount') {
         const num = Number(value) || 0;
-        const ratio = workingDays > 0 ? (paidDays / workingDays) : 1;
-        baseSalaryRef.current.deductions[idx].amount = ratio > 0 ? Math.round(num / ratio) : num;
+        baseSalaryRef.current.deductions[idx].amount = num;
       } else {
         baseSalaryRef.current.deductions[idx][field] = value;
       }

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Palette } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Palette, Download, Printer } from 'lucide-react';
 import PayslipTemplate from '../PayslipTemplate';
+import { generatePayslipPdf } from '../../utils/pdfGenerator';
 
 export default function PayslipPreviewModal({
   isOpen,
@@ -19,6 +20,35 @@ export default function PayslipPreviewModal({
   const [selectedTemplate, setSelectedTemplate] = useState(
     activeTemplate || templates.find(t => t.is_default) || templates[0] || null
   );
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    if (activeTemplate) {
+      setSelectedTemplate(activeTemplate);
+    } else if (templates && templates.length > 0) {
+      setSelectedTemplate(templates.find(t => t.is_default) || templates[0]);
+    }
+  }, [activeTemplate, templates, isOpen]);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const elem = document.getElementById('printable-payslip');
+      if (elem) {
+        const empName = (employee?.name || 'Employee').replace(/[^a-zA-Z0-9]/g, '_');
+        const month = payslipData?.pay_month || 'Month';
+        const year = payslipData?.pay_year || 'Year';
+        await generatePayslipPdf(elem, `Payslip_${empName}_${month}_${year}.pdf`);
+      } else {
+        alert('Could not locate printable payslip element in preview.');
+      }
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('PDF export note: ' + (err.message || 'Failed to export PDF'));
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
@@ -50,9 +80,28 @@ export default function PayslipPreviewModal({
             )}
           </div>
 
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1 self-end sm:self-auto">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition disabled:opacity-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{downloading ? 'Exporting...' : 'Download PDF'}</span>
+            </button>
+
+            <button
+              onClick={() => window.print()}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print</span>
+            </button>
+
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <PayslipTemplate
@@ -68,15 +117,17 @@ export default function PayslipPreviewModal({
           <button onClick={onClose} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-lg text-xs transition">
             Back to Form
           </button>
-          <button
-            onClick={() => {
-              onClose();
-              onConfirmGenerate();
-            }}
-            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-lg text-xs shadow-md transition"
-          >
-            Confirm & Generate Payslip
-          </button>
+          {onConfirmGenerate && (
+            <button
+              onClick={() => {
+                onClose();
+                onConfirmGenerate();
+              }}
+              className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-lg text-xs shadow-md transition"
+            >
+              Confirm & Generate Payslip
+            </button>
+          )}
         </div>
       </div>
     </div>

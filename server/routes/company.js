@@ -165,17 +165,20 @@ router.delete('/companies/:id', authenticateToken, (req, res) => {
     const existing = db.prepare('SELECT * FROM company WHERE id = ?').get(companyId);
     if (!existing) return res.status(404).json({ error: 'Company not found.' });
 
+    // Clean up associated payslips for this company
+    db.prepare('DELETE FROM payslips WHERE company_id = ?').run(companyId);
+
+    // Handle employees assigned to this company
     const assignedEmployees = db.prepare('SELECT COUNT(*) as count FROM employees WHERE company_id = ?').get(companyId).count;
     if (assignedEmployees > 0) {
-      if (req.query.force === 'true') {
-        // Unlink employees from this company
-        db.prepare('UPDATE employees SET company_id = NULL WHERE company_id = ?').run(companyId);
+      if (req.query.cascade === 'true') {
+        // Cascade delete employees and their salary structures
+        db.prepare('DELETE FROM salary_structures WHERE employee_id IN (SELECT id FROM employees WHERE company_id = ?)').run(companyId);
+        db.prepare('DELETE FROM employees WHERE company_id = ?').run(companyId);
       } else {
-        return res.status(400).json({
-          error: `Company "${existing.name}" has ${assignedEmployees} employee(s) assigned.`,
-          assignedEmployees,
-          canForce: true
-        });
+        // Unlink employees from this company (or reassign to fallback company)
+        const fallbackCompany = db.prepare('SELECT id FROM company WHERE id != ? ORDER BY id ASC LIMIT 1').get(companyId);
+        db.prepare('UPDATE employees SET company_id = ? WHERE company_id = ?').run(fallbackCompany ? fallbackCompany.id : null, companyId);
       }
     }
 

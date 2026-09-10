@@ -235,9 +235,16 @@ function initDb() {
     `);
 
     insertTemplate.run(
+      'Adecco Enterprise', 'adecco-corporate',
+      'Official enterprise tabular layout with dual employee columns, leave tracking table, YTD breakdown, and accounting ledger borders.',
+      1, '#000000', '#dc2626', 'adecco', 'centered', 1, 1, 1, 1, 1,
+      'This is a computer-generated payslip and does not require a physical signature.'
+    );
+
+    insertTemplate.run(
       'Modern Corporate', 'modern-corporate',
       'Contemporary corporate layout with dual-column salary breakdown and crisp badges.',
-      1, '#0f172a', '#2563eb', 'modern', 'split', 1, 1, 1, 1, 1,
+      0, '#0f172a', '#2563eb', 'modern', 'split', 1, 1, 1, 1, 1,
       'This is a computer-generated payslip and does not require a physical signature.'
     );
 
@@ -261,6 +268,27 @@ function initDb() {
       0, '#065f46', '#059669', 'minimalist', 'split', 1, 1, 1, 1, 1,
       'Generated via automated enterprise payroll system.'
     );
+  } else {
+    // Migration: ensure Adecco Enterprise exists and is set as default
+    const adeccoExists = db.prepare("SELECT * FROM payslip_templates WHERE slug = 'adecco-corporate' OR layout_type = 'adecco'").get();
+    if (!adeccoExists) {
+      db.prepare('UPDATE payslip_templates SET is_default = 0').run();
+      db.prepare(`
+        INSERT INTO payslip_templates (
+          name, slug, description, is_default, theme_color, accent_color,
+          layout_type, header_style, show_company_logo, show_bank_details,
+          show_statutory_ids, show_attendance, show_signature_block, footer_notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        'Adecco Enterprise', 'adecco-corporate',
+        'Official enterprise tabular layout with dual employee columns, leave tracking table, YTD breakdown, and accounting ledger borders.',
+        1, '#000000', '#dc2626', 'adecco', 'centered', 1, 1, 1, 1, 1,
+        'This is a computer-generated payslip and does not require a physical signature.'
+      );
+    } else if (!adeccoExists.is_default) {
+      db.prepare('UPDATE payslip_templates SET is_default = 0').run();
+      db.prepare("UPDATE payslip_templates SET is_default = 1 WHERE id = ?").run(adeccoExists.id);
+    }
   }
 
   // Seed sample initial audit log

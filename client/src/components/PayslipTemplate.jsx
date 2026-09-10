@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatCurrency, formatDate, formatDateTime, maskAccountNumber } from '../utils/formatters';
 import { Building2, ShieldCheck, Printer, Download, Eye, Award, FileText } from 'lucide-react';
+import AdeccoPayslipLayout from './payslip/AdeccoPayslipLayout';
 
 export const DEFAULT_BLOCKS = [
   { id: 'b_header', type: 'company_header', title: 'Company Header', width: '100%', align: 'split', showLogo: true, showAddress: true, showContacts: true },
@@ -31,19 +32,33 @@ export default function PayslipTemplate({
     );
   }
 
+  // Helper to safely parse objects/arrays if stored as JSON string
+  const safeParse = (val, fallback) => {
+    if (!val) return fallback;
+    if (typeof val === 'object') return val;
+    try {
+      return JSON.parse(val);
+    } catch {
+      return fallback;
+    }
+  };
+
   // Handle snapshot object or live prop fallback
-  const comp = payslip?.company || company || {};
-  const emp = payslip?.employee || employee || {};
-  const earnList = payslip?.earnings || earnings || [];
-  const dedList = payslip?.deductions || deductions || [];
+  const comp = safeParse(payslip?.company || payslip?.company_snapshot_json, company || {});
+  const emp = safeParse(payslip?.employee || payslip?.employee_snapshot_json, employee || {});
+  const rawEarn = safeParse(payslip?.earnings || payslip?.earnings_snapshot_json, earnings || []);
+  const rawDed = safeParse(payslip?.deductions || payslip?.deductions_snapshot_json, deductions || []);
+  const earnList = Array.isArray(rawEarn) ? rawEarn : [];
+  const dedList = Array.isArray(rawDed) ? rawDed : [];
 
   // Active Template Settings
   const tmpl = template || {
-    name: 'Modern Corporate',
-    layout_type: 'modern',
-    header_style: 'split',
-    theme_color: '#0f172a',
-    accent_color: '#2563eb',
+    name: 'Adecco Enterprise',
+    slug: 'adecco-corporate',
+    layout_type: 'adecco',
+    header_style: 'centered',
+    theme_color: '#000000',
+    accent_color: '#da291c',
     show_company_logo: 1,
     show_bank_details: 1,
     show_statutory_ids: 1,
@@ -55,8 +70,23 @@ export default function PayslipTemplate({
 
   const themeColor = tmpl.theme_color || '#0f172a';
   const accentColor = tmpl.accent_color || '#2563eb';
-  const layoutType = tmpl.layout_type || 'modern';
+  const layoutType = tmpl.layout_type || 'adecco';
   const headerStyle = tmpl.header_style || 'split';
+
+  // Dedicated Enterprise Tabular (Adecco) Layout Handler
+  if ((layoutType === 'adecco' || tmpl.slug === 'adecco-corporate') && !tmpl.layout_config_json) {
+    return (
+      <AdeccoPayslipLayout
+        payslip={payslip}
+        company={comp}
+        employee={emp}
+        earnings={earnList}
+        deductions={dedList}
+        template={tmpl}
+        isPrintMode={isPrintMode}
+      />
+    );
+  }
 
   const logoUrl = comp.logo_path ? `http://localhost:5000${comp.logo_path}` : null;
 

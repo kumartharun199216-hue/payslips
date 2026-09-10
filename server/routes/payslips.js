@@ -224,7 +224,20 @@ router.get('/payslips', (req, res) => {
 
     query += ` ORDER BY p.id DESC`;
 
-    const rows = db.prepare(query).all(...params);
+    const rows = db.prepare(query).all(...params).map(p => {
+      let employee = null, company = null, earnings = [], deductions = [];
+      try { employee = p.employee_snapshot_json ? JSON.parse(p.employee_snapshot_json) : null; } catch (e) {}
+      try { company = p.company_snapshot_json ? JSON.parse(p.company_snapshot_json) : null; } catch (e) {}
+      try { earnings = p.earnings_snapshot_json ? JSON.parse(p.earnings_snapshot_json) : []; } catch (e) {}
+      try { deductions = p.deductions_snapshot_json ? JSON.parse(p.deductions_snapshot_json) : []; } catch (e) {}
+      return {
+        ...p,
+        employee,
+        company,
+        earnings,
+        deductions
+      };
+    });
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -253,10 +266,27 @@ router.delete('/payslips/:id', authenticateToken, (req, res) => {
     const payslip = db.prepare('SELECT * FROM payslips WHERE id = ?').get(req.params.id);
     if (!payslip) return res.status(404).json({ error: 'Payslip not found.' });
 
-    db.prepare("UPDATE payslips SET status = 'Void', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
-    logAudit(req.user.id, req.user.name, 'Payslip Voided', 'Payslip', String(req.params.id), `Voided payslip #${payslip.payslip_number}`);
+    if (req.query.void === 'true') {
+      db.prepare("UPDATE payslips SET status = 'Void', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
+      logAudit(req.user.id, req.user.name, 'Payslip Voided', 'Payslip', String(req.params.id), `Voided payslip #${payslip.payslip_number}`);
+      return res.json({ message: `Payslip #${payslip.payslip_number} marked as void.` });
+    }
 
-    res.json({ message: 'Payslip marked as void.' });
+    db.prepare('DELETE FROM payslips WHERE id = ?').run(req.params.id);
+    logAudit(req.user.id, req.user.name, 'Payslip Deleted', 'Payslip', String(req.params.id), `Permanently deleted payslip #${payslip.payslip_number}`);
+
+    res.json({ message: `Payslip #${payslip.payslip_number} permanently deleted.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bulk delete payslips by company
+router.delete('/payslips/company/:companyId', authenticateToken, (req, res) => {
+  try {
+    const info = db.prepare('DELETE FROM payslips WHERE company_id = ?').run(req.params.companyId);
+    logAudit(req.user.id, req.user.name, 'Bulk Payslips Deleted', 'Payslip', req.params.companyId, `Deleted ${info.changes} payslips for company ID ${req.params.companyId}`);
+    res.json({ message: `Deleted ${info.changes} payslip(s).`, deletedCount: info.changes });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
